@@ -23,7 +23,7 @@ namespace MergePDF
             var cont = true;
             while (cont)
             {
-                Console.WriteLine("Press any key to continue to merge PDFs or q to quit.");
+                Console.WriteLine("Merge PDFs - Press any key to continue or type q to quit.");
                 switch (Console.ReadLine())
                 {
                     case "q":
