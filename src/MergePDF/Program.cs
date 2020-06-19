@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http.Headers;
 using Common;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
@@ -19,18 +20,31 @@ namespace MergePDF
 
             //Create directoryinfo object with paths to all folders
             var envDirectory = new FolderInfo(env);
+            var cont = true;
+            while (cont)
+            {
+                Console.WriteLine("Press any key to continue to merge PDFs or q to quit.");
+                switch (Console.ReadLine())
+                {
+                    case "q":
+                        Console.WriteLine("Goodbye");
+                        cont = false;
+                        break;
+                    default:
+                        //Check folder exits
+                        CheckFolders(envDirectory);
 
-            //check if folders exist, if no create them
-            CheckFolders(envDirectory);
+                        //Combine PDFs
+                        CombineMultiplePdFs(envDirectory.SourcePdfFolder, envDirectory.FinishedPdfFolder);
 
-            Console.WriteLine("Hello");
-
-            //Process all PDF's in source folder
-            CombineMultiplePDFs(envDirectory.SourcePdfFolder,envDirectory.FinishedPdfFolder);
-
-            OpenFolder(envDirectory.FinishedPdfFolder);
+                        //Open finished folder
+                        OpenFolder(envDirectory.FinishedPdfFolder);
+                        break;
+                }
+            }
         }
 
+        //Opens passed folder path in explorer on windows
         private static void OpenFolder(string folderString)
         {
             Process.Start("explorer.exe", folderString);
@@ -38,7 +52,7 @@ namespace MergePDF
 
         private static void CheckFolders(FolderInfo directoryInfo)
         {
-            if(!directoryInfo.CheckExists())
+            if (!directoryInfo.CheckExists())
             {
                 Printer.Print("Folders not found - creating them for you now.");
 
@@ -48,7 +62,7 @@ namespace MergePDF
                 Printer.Print("Folders created successfully - please drag images into the " +
                               "folder and press enter when done.");
                 //Open source PDF folder in explorer
-               Process.Start("explorer.exe", directoryInfo.SourcePdfFolder);
+                Process.Start("explorer.exe", directoryInfo.SourcePdfFolder);
             }
             else
             {
@@ -57,50 +71,66 @@ namespace MergePDF
                 Console.ReadLine();
             }
         }
-        public static void CombineMultiplePDFs(string targetDirectory, string outFileLocation)
+        public static void CombineMultiplePdFs(string targetDirectory, string outFileLocation)
         {
-            // step 1: creation of a document-object
-            Document document = new Document();
-
-            //Get files in specific directory
-            string[] fileEntries = Directory.GetFiles(targetDirectory);
-
-            var mergedFileName = "\\Merged -" + Path.GetFileName(fileEntries[0]) ;
-            //Create name for the outfile
-            var outFile = outFileLocation + mergedFileName;
-            //create newFileStream object which will be disposed at the end
-            using (FileStream newFileStream = new FileStream(outFile, FileMode.Create))
+            var filesPresent = CheckIfDirectoryIsEmpty(targetDirectory);
+            
+            //check if any files in the PDF merge source folder
+            if (filesPresent)
             {
-                // step 2: we create a writer that listens to the document
-                PdfCopy writer = new PdfCopy(document, newFileStream);
-                if (writer == null)
+                // step 1: creation of a document-object
+                Document document = new Document();
+
+                //Get files in specific directory
+                string[] fileEntries = Directory.GetFiles(targetDirectory);
+
+                var mergedFileName = "\\Merged -" + Path.GetFileName(fileEntries[0]);
+                //Create name for the outfile
+                var outFile = outFileLocation + mergedFileName;
+                //create newFileStream object which will be disposed at the end
+                using (FileStream newFileStream = new FileStream(outFile, FileMode.Create))
                 {
-                    return;
-                }
+                    // step 2: we create a writer that listens to the document
+                    PdfCopy writer = new PdfCopy(document, newFileStream);
+                    // step 3: we open the document
+                    document.Open();
 
-                // step 3: we open the document
-                document.Open();
-
-                foreach (string fileName in fileEntries)
-                {
-                    // we create a reader for a certain document
-                    PdfReader reader = new PdfReader(fileName);
-                    reader.ConsolidateNamedDestinations();
-
-                    // step 4: we add content
-                    for (int i = 1; i <= reader.NumberOfPages; i++)
+                    foreach (string fileName in fileEntries)
                     {
-                        PdfImportedPage page = writer.GetImportedPage(reader, i);
-                        writer.AddPage(page);
+                        ProcessFile(fileName);
+                        // we create a reader for a certain document
+                        PdfReader reader = new PdfReader(fileName);
+                        reader.ConsolidateNamedDestinations();
+
+                        // step 4: we add content
+                        for (int i = 1; i <= reader.NumberOfPages; i++)
+                        {
+                            PdfImportedPage page = writer.GetImportedPage(reader, i);
+                            writer.AddPage(page);
+                        }
+
+                        reader.Close();
                     }
 
-                    reader.Close();
+                    // step 5: we close the document and writer
+                    writer.Close();
+                    document.Close();
                 }
+            }
+            else
+            {
+                Printer.Print($"No files found in {targetDirectory}");
+            }
+        }
 
-                // step 5: we close the document and writer
-                writer.Close();
-                document.Close();
-            } //disposes the newFileStream object
+        private static bool CheckIfDirectoryIsEmpty(string targetDirectory)
+        {
+            string[] fileEntries = Directory.GetFiles(targetDirectory);
+            if (fileEntries != null || fileEntries.Length <= 0)
+            {
+                return true;
+            }
+            return false;
         }
 
         public static void ProcessDirectory(string targetDirectory)
