@@ -62,9 +62,10 @@ namespace MergePDF
                 directoryInfo.CreateDirectories();
 
                 Printer.Print("Folders created successfully - please drag images into the " +
-                              "folder and press enter when done.");
+                              "folder. When done return here and press enter.");
                 //Open source PDF folder in explorer
                 Process.Start("explorer.exe", directoryInfo.SourcePdfFolder);
+                Console.ReadLine();
             }
             else
             {
@@ -130,9 +131,9 @@ namespace MergePDF
             string[] fileEntries = Directory.GetFiles(targetDirectory);
             if (fileEntries != null || fileEntries.Length <= 0)
             {
-                return true;
+                return false;
             }
-            return false;
+            return true;
         }
 
         public static void ProcessDirectory(string targetDirectory)
