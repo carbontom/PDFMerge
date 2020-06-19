@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http.Headers;
+using System.Threading;
 using Common;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
@@ -28,6 +29,7 @@ namespace MergePDF
                 {
                     case "q":
                         Console.WriteLine("Goodbye");
+                        Thread.Sleep(2000);
                         cont = false;
                         break;
                     default:
